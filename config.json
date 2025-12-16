@@ -1,9 +1,9 @@
 {
     "develop": {
         "spnSecret": "DEV",
-        "capacity": "none",
-        "workspace": "FP_Analysis_DEV",
-        "adminUPNs": "9322eb4a-4132-4bd1-8df1-5cd3d1d2400b",
+        "capacity": "507E9769-CE90-4890-A1B6-0DAC927D5B32",
+        "workspace": "TESTE_PBIP_DEV",
+        "adminUPNs": "d50e20f7-7dcc-4d38-910c-27c8c5852183",
         "semanticModelsParameters": {
             "SqlServerInstance": "",
             "SqlServerDatabase": ""
@@ -11,9 +11,9 @@
     },
     "main": {
         "spnSecret": "PRD",
-        "capacity": "none",
-        "workspace": "FP_Analysis_PRD",
-        "adminUPNs": "9322eb4a-4132-4bd1-8df1-5cd3d1d2400b",
+        "capacity": "507E9769-CE90-4890-A1B6-0DAC927D5B32",
+        "workspace": "TESTE_PBIP_DEV",
+        "adminUPNs": "d50e20f7-7dcc-4d38-910c-27c8c5852183",
         "semanticModelsParameters": {
             "SqlServerInstance": "",
             "SqlServerDatabase": ""
