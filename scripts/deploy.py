@@ -2,6 +2,8 @@ import os
 import argparse
 import glob
 from utils import *
+from utils import _semantic_model_definition_from_pbip_folder
+from utils import _report_definition_from_pbip_folder
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("--spn-auth", action="store_true", default=True)
