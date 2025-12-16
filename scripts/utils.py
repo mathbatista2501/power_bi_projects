@@ -269,7 +269,7 @@ def deploy_item(
                                 file.write(text)
     if not what_if:
         run_fab_command(
-            f"import -f /{workspace_name}.workspace/{item_name}.{item_type} -i {staging_path}"
+            f"import -f {workspace_name}.workspace/{item_name}.{item_type} -i {staging_path}"
         )
 
         # Return id after deployment
