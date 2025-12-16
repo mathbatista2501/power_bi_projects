@@ -11,73 +11,101 @@ debug = False
 # Load environment variables from a .env file if it exists
 load_dotenv()
 
+
 def fab_authenticate_spn():
     """
-    Authenticates with a Service Principal Name (SPN) using environment variables.
-    This function retrieves the client ID, client secret, and tenant ID from the environment
-    variables `FABRIC_CLIENT_ID`, `FABRIC_CLIENT_SECRET`, and `FABRIC_TENANT_ID` respectively.
-    It then uses these credentials to authenticate with the SPN.
-    Raises:
-        Exception: If any of the required environment variables (`FABRIC_CLIENT_ID`,
-                   `FABRIC_CLIENT_SECRET`, `FABRIC_TENANT_ID`) are not set.
-    Side Effects:
-        Executes the `run_fab_command` function to set the encryption fallback and perform the authentication.
+    Autentica com Service Principal usando variáveis de ambiente:
+    FABRIC_CLIENT_ID, FABRIC_CLIENT_SECRET, FABRIC_TENANT_ID.
+
+    Ordem correta em CI:
+      1) habilitar fallback de criptografia do cache de token
+      2) fazer login do SPN
     """
+
     client_id = os.getenv("FABRIC_CLIENT_ID")
     client_secret = os.getenv("FABRIC_CLIENT_SECRET")
     tenant_id = os.getenv("FABRIC_TENANT_ID")
 
     print("Authenticating with SPN")
-    
+
     if not all([client_id, client_secret, tenant_id]):
         raise Exception("FABRIC_CLIENT_ID, FABRIC_CLIENT_SECRET and FABRIC_TENANT_ID are required")
 
-    run_fab_command("config set fab_encryption_fallback_enabled true")
+    # 1) Habilitar fallback ANTES do login — chave correta (sem 'fab_')
+    # Docs do Fabric CLI: 'encryption_fallback_enabled'
+    # Exemplos oficiais: 'fab config set encryption_fallback_enabled true'
+    run_fab_command("config set encryption_fallback_enabled true")
 
+    # (opcional) confirmar valor
+    run_fab_command("config get encryption_fallback_enabled", capture_output=True)
+
+    # 2) Login SPN
     run_fab_command(
         f"auth login -u {client_id} -p {client_secret} --tenant {tenant_id}",
         include_secrets=True
     )
-    
-    print("SPN authenticated successfully!")  
+
+    print("SPN authenticated successfully!")
+
 
 
 def run_fab_command(
-    command, 
-        capture_output: bool = False, 
-        include_secrets: bool = False,
-        silently_continue: bool = False
-    ):
+    command: str,
+    capture_output: bool = False,
+    include_secrets: bool = False,
+    silently_continue: bool = False
+):
     """
-    Executes a Fabric command.
-    Parameters:
-    command (str): The Fabric command to execute.
-    capture_output (bool): If True, captures the command's output. Defaults to False.
-    include_secrets (bool): If True, includes secrets in the debug output. Defaults to False.
-    Returns:
-    str: The output of the command if capture_output is True.
-    Raises:
-    Exception: If there is an error running the Fabric command.
+    Executa um comando do Fabric CLI (fab) em modo não interativo.
+
+    Parâmetros:
+        command (str): subcomando do 'fab' (ex.: "config set encryption_fallback_enabled true").
+        capture_output (bool): se True, retorna stdout do processo.
+        include_secrets (bool): se True, imprime valores sensíveis em logs de debug (evitar em CI).
+        silently_continue (bool): se True, não lança exceção em caso de erro; apenas retorna stdout/stderr.
+
+    Retorno:
+        str | None: stdout completo (strip) se capture_output=True; caso contrário, None.
+
+    Exceções:
+        Exception: se o comando falhar (exit_code != 0) e silently_continue=False.
     """
-    
+
+    # Converte o comando em lista de args segura (evita parsing frágil com shell=True)
+    args = ["fab", *command.split()]
+
     result = subprocess.run(
-        f"fab {command}",
-        capture_output=capture_output,
-        text=True,
-        shell=True
+        args,
+        capture_output=True,  # sempre capturar para poder depurar com mensagens úteis
+        text=True
     )
 
+    exit_code = result.returncode
+    stdout = (result.stdout or "").strip()
+    stderr = (result.stderr or "").strip()
 
-    if not (silently_continue) and (result.returncode > 0 or result.stderr):
+    # Monta uma linha de comando "safe" para log (removendo segredos se necessário)
+    cmd_for_log = " ".join(args)
+    if not include_secrets:
+        # Tentativa de mascarar segredos comuns (-p <secret>, --password, etc.)
+        cmd_for_log = cmd_for_log.replace("-p", "-p *****")
+
+    # Se deu erro e não é para continuar silenciosamente, lança exceção
+    if not silently_continue and (exit_code != 0):
         raise Exception(
-            f"Error running fab command. exit_code: '{result.returncode}'; stderr: '{result.stderr}'"
+            "Error running fab command.\n"
+            f"  command: {cmd_for_log}\n"
+            f"  exit_code: {exit_code}\n"
+            f"  stdout:\n{stdout}\n"
+            f"  stderr:\n{stderr}\n"
         )
 
+    # Se quiser o output, retorna stdout completo
     if capture_output:
+        return stdout
 
-        output = result.stdout.strip().split("\n")[-1]
+    return None
 
-        return output
 
 
 def create_workspace(workspace_name, capacity_name: str = "none", upns: list = None):
