@@ -40,8 +40,7 @@ database = semanticmodel_parameters.get("SqlServerDatabase", None)
 if spn_auth:
     fab_authenticate_spn()
 
-# Ensure workspace exists
-workspace_id = create_workspace(workspace_name=workspace_name, capacity_name=capacity_name, upns=admin_upns)
+
 
 # Deploy semantic model
 semanticmodel_id = deploy_item(
