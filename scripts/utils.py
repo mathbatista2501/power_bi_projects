@@ -275,7 +275,7 @@ def deploy_item(
         # Return id after deployment
 
         item_id = run_fab_command(
-            f"get /{workspace_name}.workspace/{item_name}.{item_type} -q id",
+            f"get {workspace_name}.workspace/{item_name}.{item_type} -q id",
             capture_output=True,
         )
 
