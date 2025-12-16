@@ -42,44 +42,78 @@ if spn_auth:
 
 
 
-# Deploy semantic model
-semanticmodel_id = deploy_item(
-    "src/FP_Analysis.SemanticModel",
-    workspace_name=workspace_name,
-    find_and_replace={
-        (
-            r"expressions.tmdl",
-            r'(expression\s+SqlServerInstance\s*=\s*)".*?"',
-        ): rf'\1"{server}"',
-        (
-            r"expressions.tmdl",
-            r'(expression\s+SqlServerDatabase\s*=\s*)".*?"',
-        ): rf'\1"{database}"',
-    },
+# Autenticação (REST)
+token = get_fabric_token_spn()  # token para REST APIs (audience api.fabric) [7](https://learn.microsoft.com/en-us/rest/api/fabric/articles/)
+
+# ⚠️ Você precisa do workspaceId (GUID) para as APIs
+# Sugestões:
+# - adicionar --workspace-id nos args (já incluído nos patches anteriores)
+# - ou resolver via config.json
+workspace_id = configEnv.get("workspaceId")
+if not workspace_id:
+    print("Erro: workspaceId ausente no config.json (necessário para REST).", file=sys.stderr)
+    sys.exit(2)
+
+# ----- Semantic Model via API -----
+src_folder = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "src"))
+semantic_model_folder = os.path.join(src_folder, "FP_Analysis.SemanticModel")
+
+# Monta replacements com os regex já usados
+replacements = {
+    (r"expressions.tmdl", r'(expression\s+SqlServerInstance\s*=\s*)".*?"'): rf'\1"{server}"' if server else None,
+    (r"expressions.tmdl", r'(expression\s+SqlServerDatabase\s*=\s*)".*?"'): rf'\1"{database}"' if database else None,
+}
+# remove entries None
+replacements = {k: v for k, v in replacements.items() if v is not None}
+
+sm_definition = _semantic_model_definition_from_pbip_folder(
+    semantic_model_folder,
+    replacements=replacements or None
 )
 
-# Deploy reports
-for report_path in glob.glob("src/*.Report"):
-    deploy_item(
-        report_path,
-        workspace_name=workspace_name,
-        find_and_replace={
-            ("definition.pbir", r"\{[\s\S]*\}"): json.dumps(
-                {
-                    "version": "4.0",
-                    "datasetReference": {
-                        "byConnection": {
-                            "connectionString": None,
-                            "pbiServiceModelId": None,
-                            "pbiModelVirtualServerName": "sobe_wowvirtualserver",
-                            "pbiModelDatabaseName": semanticmodel_id,
-                            "name": "EntityDataSource",
-                            "connectionType": "pbiServiceXmlaStyleLive",
-                        }
-                    },
-                }
-            )
+semanticmodel_display_name = "FP_Analysis.SemanticModel"  # destino (nome exibido)
+semanticmodel_id = create_or_update_semantic_model(
+    workspace_id=workspace_id,
+    display_name=semanticmodel_display_name,
+    definition=sm_definition,
+    token=token
+)
+
+# ----- Reports via API -----
+for report_path in glob.glob(os.path.join(src_folder, "*.Report")):
+    report_name = os.path.basename(report_path.rstrip("/"))  # p.ex. MyReport.Report
+
+    # Monta o JSON do definition.pbir (byConnection)
+    definition_pbir = {
+        "version": "4.0",
+        "datasetReference": {
+            "byConnection": {
+                "connectionString": None,
+                "pbiServiceModelId": None,
+                "pbiModelVirtualServerName": "sobe_wowvirtualserver",
+                "pbiModelDatabaseName": semanticmodel_id,  # usa o ID retornado
+                "name": "EntityDataSource",
+                "connectionType": "pbiServiceXmlaStyleLive",
+            }
         },
+    }
+
+    rep_definition = _report_definition_from_pbip_folder(
+        folder=report_path        folder=report_path,
+        definition_pbir_json=definition_pbir
     )
+
+    create_or_update_report(
+        workspace_id=workspace_id,
+        display_name=report_name,  # nome do item report
+        definition=rep_definition,
+        token=token)
+
+
+
+
+
+
+
 
 run_fab_command("auth logout")

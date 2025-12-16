@@ -1,5 +1,6 @@
 {
     "develop": {
+        "workspaceId": "0bbfac42-9fea-4d85-b35b-7f44ca50e7c5",
         "spnSecret": "DEV",
         "capacity": "507E9769-CE90-4890-A1B6-0DAC927D5B32",
         "workspace": "TESTE_PBIP_DEV",
@@ -10,6 +11,7 @@
         }
     },
     "main": {
+        "workspaceId": "0bbfac42-9fea-4d85-b35b-7f44ca50e7c5",
         "spnSecret": "PRD",
         "capacity": "507E9769-CE90-4890-A1B6-0DAC927D5B32",
         "workspace": "TESTE_PBIP_DEV",
