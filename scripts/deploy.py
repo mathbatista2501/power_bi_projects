@@ -80,10 +80,12 @@ semanticmodel_id = create_or_update_semantic_model(
 )
 
 # ----- Reports via API -----
-for report_path in glob.glob(os.path.join(src_folder, "*.Report")):
-    report_name = os.path.basename(report_path.rstrip("/"))  # p.ex. MyReport.Report
 
-    # Monta o JSON do definition.pbir (byConnection)
+# ----- Deploy dos Reports via REST -----
+for report_path in glob.glob(os.path.join(src_folder, "*.Report")):
+    report_name = os.path.basename(report_path.rstrip("/"))  # ex.: MyReport.Report
+
+    # Monta o JSON do definition.pbir (byConnection) exigido pela REST API
     definition_pbir = {
         "version": "4.0",
         "datasetReference": {
@@ -91,24 +93,26 @@ for report_path in glob.glob(os.path.join(src_folder, "*.Report")):
                 "connectionString": None,
                 "pbiServiceModelId": None,
                 "pbiModelVirtualServerName": "sobe_wowvirtualserver",
-                "pbiModelDatabaseName": semanticmodel_id,  # usa o ID retornado
+                "pbiModelDatabaseName": semanticmodel_id,  # usa o ID retornado do SM
                 "name": "EntityDataSource",
                 "connectionType": "pbiServiceXmlaStyleLive",
             }
         },
     }
 
+    # Constrói a definition do report (PBIR-Legacy com report.json + definition.pbir)
     rep_definition = _report_definition_from_pbip_folder(
-        folder=report_path        folder=report_path,
+        folder=report_path,
         definition_pbir_json=definition_pbir
     )
 
+    # Cria/atualiza via REST
     create_or_update_report(
         workspace_id=workspace_id,
-        display_name=report_name,  # nome do item report
+        display_name=report_name,
         definition=rep_definition,
-        token=token)
-
+        token=token
+    )
 
 
 
